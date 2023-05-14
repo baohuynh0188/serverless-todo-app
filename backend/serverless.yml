@@ -87,18 +87,12 @@ functions:
         Action:
           - dynamodb:PutItem
         Resource: !GetAtt TodosTable.Arn
-      - Effect: Allow
-        Action:
-          - xray:PutTraceSegments
-          - xray:PutTelemetryRecords
-        Resource:
-          - '*'
 
   UpdateTodo:
     handler: src/lambda/http/updateTodo.handler
     events:
       - http:
-          method: patch
+          method: PATCH
           path: /todos/{todoId}
           cors: true
           authorizer: Auth
