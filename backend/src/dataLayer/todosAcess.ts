@@ -23,6 +23,7 @@ const createDynamoDBClient = () => {
 const docClient: DocumentClient = createDynamoDBClient();
 const todosTable = process.env.TODOS_TABLE;
 const todosCreatedAtIndex = process.env.TODOS_CREATED_AT_INDEX;
+const attachmentS3Bucket = process.env.ATTACHMENT_S3_BUCKET;
 
 export const getTodosByUserId = async (userId: string): Promise<TodoItem[]> => {
     logger.info('Getting all todos');
@@ -104,11 +105,42 @@ export const deleteTodoItem = async (userId: string, todoId: string) => {
     logger.info('Todo is deleted!');
 };
 
+export const updateTodoAttachmentUrl = async (
+    todoId: string,
+    userId: string
+): Promise<TodoItem> => {
+    logger.info(`Updating todo attachment url: ${todoId}`);
+
+    const attachmentUrl: string = `https://${attachmentS3Bucket}.s3.amazonaws.com/${todoId}`;
+
+    const params = {
+        TableName: todosTable,
+        Key: {
+            userId: userId,
+            todoId: todoId,
+        },
+        UpdateExpression: 'set #attachmentUrl = :attachmentUrl',
+        ExpressionAttributeNames: {
+            '#attachmentUrl': 'attachmentUrl',
+        },
+        ExpressionAttributeValues: {
+            ':attachmentUrl': attachmentUrl,
+        },
+        ReturnValues: 'ALL_NEW',
+    };
+
+    const result = await docClient.update(params).promise();
+    const item = result.Attributes;
+
+    return item as TodoItem;
+};
+
 const todosAccess = {
     getTodosByUserId,
     createTodoItem,
     updateTodoItem,
     deleteTodoItem,
+    updateTodoAttachmentUrl,
 };
 
 export default todosAccess;

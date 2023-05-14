@@ -1,18 +1,16 @@
 import { v4 as uuidV4 } from 'uuid';
-// import * as createError from 'http-errors';
 import {
     getTodosByUserId,
     createTodoItem,
     deleteTodoItem,
     updateTodoItem,
+    updateTodoAttachmentUrl,
 } from '../dataLayer/todosAcess';
-// import { AttachmentUtils } from './attachmentUtils';
+import { getSignedUrl } from '../helpers/attachmentUtils';
 import TodoItem from '../models/TodoItem';
 import { CreateTodoRequest } from '../requests/CreateTodoRequest';
 import { UpdateTodoRequest } from '../requests/UpdateTodoRequest';
 import { createLogger } from '../utils/logger';
-
-// const attachmentUtils = new AttachmentUtils();
 
 const logger = createLogger('Todos');
 
@@ -61,11 +59,11 @@ export const deleteTodo = async (
     await deleteTodoItem(userId, todoId);
 };
 
-// export const createAttachmentPresignedUrl = async (
-//     todoId: string,
-//     userId: string
-// ): Promise<string> => {
-//     await todosAccess.updateAttachmentUrl(todoId, userId); // Update Todo attachment URL
+export const createAttachmentPresignedUrl = async (
+    todoId: string,
+    userId: string
+): Promise<string> => {
+    await updateTodoAttachmentUrl(todoId, userId);
 
-//     return await attachmentUtils.createAttachmentPresignedUrl(todoId);
-// }
+    return getSignedUrl(todoId);
+};
