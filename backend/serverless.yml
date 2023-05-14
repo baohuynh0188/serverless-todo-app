@@ -25,6 +25,8 @@ provider:
     ATTACHMENT_S3_BUCKET: serverless-biolight-todo-images-${self:provider.stage}
     SIGNED_URL_EXPIRATION: 300
     AUTH_0_SECRET: 3GSomn-taDUME_WarhhPnak57HaNRVGPBV5xDE5orsmlxtnN7qbpbop0P8_gCs57
+    AUTH_0_SECRET_ID: Auth0Secret-${self:provider.stage}
+    AUTH_0_SECRET_FIELD: auth0Secret
 
   logs:
     # Enable API Gateway logs
@@ -39,22 +41,15 @@ provider:
             - xray:PutTraceSegments
           Resource: '*'
 
-    # - Effect: Allow
-    #   Action:
-    #     - dynamodb:PutItem
-    #     - dynamodb:Query
-    #   Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_IMAGES_TABLE}
-
-    # - Effect: Allow
-    #   Action:
-    #     - dynamodb:Query
-    #   Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_IMAGES_TABLE}/index/${self:provider.environment.TODOS_CREATED_AT_INDEX}
-
-    # - Effect: Allow
-    #   Action:
-    #     - s3:PutObject
-    #     - s3:GetObject
-    #   Resource: arn:aws:s3:::${self:provider.environment.ATTACHMENT_S3_BUCKET}/*
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - secretsmanager:GetSecretValue
+      Resource: !Ref Auth0Secret
+    - Effect: Allow
+      Action:
+        - kms:Decrypt
+      Resource: !GetAtt KMSKey.Arn
 
 functions:
   Auth:
@@ -227,3 +222,37 @@ resources:
     #             - 's3:PutObject'
     #           Resource: 'arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*'
     #     Bucket: !Ref AttachmentsBucket
+
+    KMSKey:
+      Type: AWS::KMS::Key
+      Properties:
+        Description: KMS key to encrypt Auth0 secret
+        KeyPolicy:
+          Version: '2012-10-17'
+          Id: key-default-1
+          Statement:
+            - Sid: Allow administration of the key
+              Effect: Allow
+              Principal:
+                AWS:
+                  Fn::Join:
+                    - ':'
+                    - - 'arn:aws:iam:'
+                      - Ref: AWS::AccountId
+                      - 'root'
+              Action:
+                - 'kms:*'
+              Resource: '*'
+
+    KMSKeyAlias:
+      Type: AWS::KMS::Alias
+      Properties:
+        AliasName: alias/auth0Key-${self:provider.stage}
+        TargetKeyId: !Ref KMSKey
+
+    Auth0Secret:
+      Type: AWS::SecretsManager::Secret
+      Properties:
+        Name: ${self:provider.environment.AUTH_0_SECRET_ID}
+        Description: Auth0 secret
+        KmsKeyId: !Ref KMSKey
